@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ─── Config ────────────────────────────────────────────────────────────────────
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8232409100:AAExUp0yXjQzN7js3bQriSKq5MiOClU3BeU")
 ADMIN_ID  = 6593129349
 DB_FILE   = "users.json"
 
